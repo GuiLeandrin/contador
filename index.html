@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contador de Esfihas</title>
+<style>
+:root {
+  --bg: #fff8ef; --card: #ffffff; --text: #3b2a1a; --muted: #8a7360;
+  --accent: #d9480f; --accent-text: #ffffff; --line: #f0e2d0;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1e1812; --card: #2b231b; --text: #f5e9dc; --muted: #a8957f;
+    --accent: #ff8a4c; --accent-text: #1e1812; --line: #3d3228;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1e1812; --card: #2b231b; --text: #f5e9dc; --muted: #a8957f;
+  --accent: #ff8a4c; --accent-text: #1e1812; --line: #3d3228;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px);
+  min-height: 100vh;
+}
+main { max-width: 520px; margin: 0 auto; padding: 24px 0 40px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; text-align: center; }
+.sub { color: var(--muted); text-align: center; margin: 0 0 20px; }
+.total {
+  background: var(--accent); color: var(--accent-text);
+  border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 16px;
+}
+.total span { display: block; font-size: 2.4rem; font-weight: 700; line-height: 1.1; }
+.total small { font-size: .9rem; opacity: .9; }
+.add { display: flex; gap: 8px; margin-bottom: 16px; }
+.add input {
+  flex: 1; min-width: 0; font: inherit; color: var(--text);
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px;
+}
+.add input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  font: inherit; cursor: pointer; border: none; border-radius: 12px;
+  background: var(--card); color: var(--text);
+  border: 1px solid var(--line); min-width: 44px; min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active { transform: scale(.96); }
+.add button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); padding: 0 18px; font-weight: 600; }
+ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.row {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ctrl { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.num { min-width: 42px; text-align: center; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+button.del { min-width: 36px; min-height: 36px; color: var(--muted); font-size: .9rem; margin-left: 4px; }
+.empty { color: var(--muted); text-align: center; margin: 24px 0; }
+.footer { text-align: center; margin-top: 28px; }
+.footer button { background: transparent; color: var(--muted); border-color: var(--line); padding: 8px 14px; min-height: 40px; font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🥟 Contador de Esfihas</h1>
+  <p class="sub">Toque no + a cada esfiha 😋</p>
+
+  <div class="total">
+    <small>Total da mesa</small>
+    <span id="total">0</span>
+  </div>
+
+  <div class="add">
+    <input id="nome" type="text" placeholder="Nome do amigo" maxlength="30" autocomplete="off">
+    <button id="addBtn" class="primary" type="button">Adicionar</button>
+  </div>
+
+  <ul id="lista"></ul>
+  <p id="vazio" class="empty">Adicione alguém para começar.</p>
+
+  <div class="footer">
+    <button id="zerar" type="button">Zerar contagens</button>
+  </div>
+</main>
+
+<script>
+const KEY = "contador-esfihas-v1";
+let pessoas = [];
+
+try {
+  pessoas = JSON.parse(localStorage.getItem(KEY)) || [];
+} catch (e) {
+  pessoas = [];
+}
+
+function salvar() {
+  try { localStorage.setItem(KEY, JSON.stringify(pessoas)); } catch (e) {}
+}
+
+function botao(texto, onClick, classe) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = texto;
+  if (classe) b.className = classe;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function render() {
+  const lista = document.getElementById("lista");
+  lista.replaceChildren();
+  let total = 0;
+
+  pessoas.forEach((p, i) => {
+    total += p.count;
+
+    const li = document.createElement("li");
+    li.className = "row";
+
+    const nome = document.createElement("span");
+    nome.className = "name";
+    nome.textContent = p.name;
+
+    const ctrl = document.createElement("div");
+    ctrl.className = "ctrl";
+
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = p.count;
+
+    ctrl.append(
+      botao("−", () => { if (p.count > 0) { p.count--; salvar(); render(); } }),
+      num,
+      botao("+", () => { p.count++; salvar(); render(); }),
+      botao("✕", () => {
+        if (confirm("Remover " + p.name + "?")) { pessoas.splice(i, 1); salvar(); render(); }
+      }, "del")
+    );
+
+    li.append(nome, ctrl);
+    lista.append(li);
+  });
+
+  document.getElementById("total").textContent = total;
+  document.getElementById("vazio").hidden = pessoas.length > 0;
+}
+
+function adicionar() {
+  const input = document.getElementById("nome");
+  const nome = input.value.trim();
+  if (!nome) return;
+  pessoas.push({ name: nome, count: 0 });
+  input.value = "";
+  salvar();
+  render();
+  input.focus();
+}
+
+document.getElementById("addBtn").addEventListener("click", adicionar);
+document.getElementById("nome").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") adicionar();
+});
+document.getElementById("zerar").addEventListener("click", () => {
+  if (confirm("Zerar todas as contagens?")) {
+    pessoas.forEach((p) => (p.count = 0));
+    salvar();
+    render();
+  }
+});
+
+render();
+</script>
+</body>
+</html>
